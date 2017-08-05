@@ -3,7 +3,7 @@ var express = require('express');
 var logger = require('morgan');
 var si = require('sql-injection');
 // routes
-var index = require('./routes/index');
+var index = require('./routes/api');
 
 var app = express();
 
