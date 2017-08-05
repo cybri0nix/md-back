@@ -1,5 +1,86 @@
 # MoscowDay - back-end NodeJS application
 
+## Installing
+```
+npm install
+npm start
+```
+
+## Stack
+* PostgreSQL 9.6+ (for mac https://postgresapp.com)
+* NodeJS 6+
+* NPM 3.10.10+
+
+#### Tools
+* PostgreSQL GUI: PgAdmin 4 (https://www.pgadmin.org/download/pgadmin-4-macos)
+
+## SQL
+```sql
+CREATE TABLE public.categories
+(
+    id bigint NOT NULL DEFAULT nextval('categories_id_seq'::regclass),
+    title character varying(300) COLLATE pg_catalog."default",
+    order_priority smallint NOT NULL DEFAULT 0,
+    CONSTRAINT categories_pkey PRIMARY KEY (id)
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE pg_default;
+
+
+CREATE TABLE public.event2cats
+(
+    category_id integer,
+    event_id bigint,
+    id bigint NOT NULL DEFAULT nextval('event2cats_id_seq'::regclass),
+    CONSTRAINT event2cats_pkey PRIMARY KEY (id)
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE pg_default;
+
+
+CREATE TABLE public.events
+(
+    id bigint NOT NULL DEFAULT nextval('events_id_seq'::regclass),
+    title character varying(400) COLLATE pg_catalog."default" NOT NULL,
+    begin_time timestamp(6) with time zone NOT NULL,
+    description text COLLATE pg_catalog."default",
+    location_title character varying(300) COLLATE pg_catalog."default",
+    lng real,
+    lat real,
+    favs_count integer,
+    updated_time timestamp(6) with time zone,
+    photo character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    place_id integer,
+    created_time timestamp(6) with time zone,
+    is_main smallint NOT NULL DEFAULT 0,
+    is_bold smallint NOT NULL DEFAULT 0,
+    CONSTRAINT events_pkey PRIMARY KEY (id)
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE pg_default;
+
+
+CREATE TABLE public.places
+(
+    title character varying(300) COLLATE pg_catalog."default" NOT NULL,
+    photo character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    order_priority smallint DEFAULT 0,
+    id bigint NOT NULL DEFAULT nextval('places_id_seq'::regclass),
+    CONSTRAINT places_pkey PRIMARY KEY (id)
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE pg_default;
+```
+
+
 ## API documentation
 
 
