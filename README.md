@@ -4,6 +4,11 @@
 ```
 npm install
 npm start
+
+
+В файле queries.js указать базу данных
+DB_QUERY_STRING
+
 ```
 
 ## Stack
