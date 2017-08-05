@@ -116,8 +116,10 @@ function getEvents(req, res, next) {
 	}
 
 	// Setting pagination
-	if (pageNum) {
+	if (itemsPerPage) {
 		q['limit'] = itemsPerPage
+	}
+	if (pageNum) {
 		q['offset'] = (pageNum-1) * itemsPerPage
 	}
 
