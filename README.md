@@ -227,13 +227,13 @@ type | bycategories - вернет список категорий с колич
 	"data":
 			[
 				{
-					"place_id":"6",
+					"id":"6",
 					"title":"more priority place 6",
 					"order_priority":2,
 					"events_count":"0"
 				},
 				{
-					"place_id":"5",
+					"id":"5",
 					"title":"High priority place 5",
 					"order_priority":1,
 					"events_count":"0"
@@ -252,25 +252,25 @@ type | bycategories - вернет список категорий с колич
 	"code":200,
 	"data":[
 			{
-				"category_id":"6",
+				"id":"6",
 				"title":"Fireworks",
 				"order_priority":1,
 				"events_count":"0"
 			},
 			{
-				"category_id":"4",
+				"id":"4",
 				"title":"Category 4",
 				"order_priority":0,
 				"events_count":"1"
 			},
 			{
-				"category_id":"5",
+				"id":"5",
 				"title":"Category 5",
 				"order_priority":0,
 				"events_count":"1"
 			},
 			{
-				"category_id":"2",
+				"id":"2",
 				"title":"Category 2",
 				"order_priority":0,
 				"events_count":"2"
