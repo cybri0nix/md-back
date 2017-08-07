@@ -107,9 +107,9 @@ TABLESPACE pg_default;
 
 ```javascript
 {
-	"event_id": "5",
+	"id": "5",
 	"begin_time": "2017-07-08T10:00:00.000Z", // Время и дата начала
-	"event_title": "Event 2",
+	"title": "Event 2",
 	"location_title": "Парк Горького", // Адрес проведения события
 	"description": "event 2 description", // Описание
 	"lng": 52,
