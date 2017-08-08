@@ -4,6 +4,11 @@
 ```
 npm install
 npm start
+
+
+В файле queries.js указать базу данных
+DB_QUERY_STRING
+
 ```
 
 ## Stack
@@ -102,9 +107,9 @@ TABLESPACE pg_default;
 
 ```javascript
 {
-	"event_id": "5",
+	"id": "5",
 	"begin_time": "2017-07-08T10:00:00.000Z", // Время и дата начала
-	"event_title": "Event 2",
+	"title": "Event 2",
 	"location_title": "Парк Горького", // Адрес проведения события
 	"description": "event 2 description", // Описание
 	"lng": 52,
@@ -222,13 +227,13 @@ type | bycategories - вернет список категорий с колич
 	"data":
 			[
 				{
-					"place_id":"6",
+					"id":"6",
 					"title":"more priority place 6",
 					"order_priority":2,
 					"events_count":"0"
 				},
 				{
-					"place_id":"5",
+					"id":"5",
 					"title":"High priority place 5",
 					"order_priority":1,
 					"events_count":"0"
@@ -247,25 +252,25 @@ type | bycategories - вернет список категорий с колич
 	"code":200,
 	"data":[
 			{
-				"category_id":"6",
+				"id":"6",
 				"title":"Fireworks",
 				"order_priority":1,
 				"events_count":"0"
 			},
 			{
-				"category_id":"4",
+				"id":"4",
 				"title":"Category 4",
 				"order_priority":0,
 				"events_count":"1"
 			},
 			{
-				"category_id":"5",
+				"id":"5",
 				"title":"Category 5",
 				"order_priority":0,
 				"events_count":"1"
 			},
 			{
-				"category_id":"2",
+				"id":"2",
 				"title":"Category 2",
 				"order_priority":0,
 				"events_count":"2"
