@@ -31,17 +31,17 @@ module.exports = {
 const ITEMS_PER_PAGE = 10;
 
 const EVENTS_LIST_COLUMNS = [
-	'e.id event_id', 		// int
+	'e.id', 		// int
 	'e.begin_time', 		// 2017-07-08 12:20:00
-	'e.title event_title', 	// character varaying
+	'e.title title', 	// character varaying
 	'e.location_title', 	// character varaying
-    'e.description', 		// text
-    'e.lng', 				// real
-    'e.lat', 				// real
-    'e.favs_count', 		// int
-    'e.is_main', 			// bool
-    'e.is_bold', 			// bool
-    'e.photo',				// character varaying
+	'e.description', 		// text
+	'e.lng', 				// real
+	'e.lat', 				// real
+	'e.favs_count', 		// int
+	'e.is_main', 			// bool
+	'e.is_bold', 			// bool
+	'e.photo',				// character varaying
 	'p.title place_title', 	// character varaying
 	'p.id place_id'		// int
 	//'c.id category_id',		// int
@@ -60,8 +60,6 @@ function getEvents(req, res, next) {
 			'from':[
 				'events e', 
 				'places p'
-				//'event2cats e2c', 
-				//'categories c'
 			],
 			'where': [
 				'e.place_id = p.id'
@@ -89,22 +87,31 @@ function getEvents(req, res, next) {
 	let date = req.query.date
 	let isMain = req.query.is_main
 
-	params['e.place_id'] = ~~req.query.place
+	let placeId = ~~req.query.place
 
+	// govnocode/kostyl/vasya
+	if (q['columns'].indexOf('e2c.category_id') !== -1) {
+		a['columns'] = a['columns'].filter(function(item) { 
+			return item !== 'e2c.category_id'
+		})
+	}
 
 	if (categoryId) {
-		q['columns'].push('e2c.category_id');
 		q['from'].push('event2cats e2c');
 		q['where'].push('e.id = e2c.event_id');
 		q['where'].push(['e2c.category_id', categoryId].join('='));
 	}
 
+	if (placeId) {
+		q['where'].push(['e.place_id', placeId].join('='));
+	}
+
 	// Setting 'where' conditions
-	for (let p in params) {
+	/*for (let p in params) {
 		if (params[p]) {
 			q['where'].push([p, params[p]].join('='));
 		}
-	}
+	}*/
 
 	if (undefined !== isMain) {
 		q['where'].push(['e.is_main', isMain].join('=')) 
@@ -178,8 +185,8 @@ function getEvents(req, res, next) {
 		let eventId2IndexMap = {}
 
 		for (let i in eventsList) {
-			eventsIDs.push( eventsList[i].event_id );
-			eventId2IndexMap[ eventsList[i].event_id ] = i;
+			eventsIDs.push( eventsList[i].id );
+			eventId2IndexMap[ eventsList[i].id ] = i;
 		}
 
 		let qCats = [
@@ -215,26 +222,23 @@ function getEvents(req, res, next) {
 					});
 				}
 
-				res.status(200)
-		        .json({
+				responseSuccess(res, {
 		          code: 200,
 		          data: eventsList
-		        });
+		        })
 
 			})
 			.catch(err => {
 				//console.log('error selecting cats');
-				res.status(404)
-		        .json({
-		          code: 404
-		        });
+				responseError(res, {
+					code: 404
+				})
 			})
 	})
 	.catch(err => {
-		res.status(404)
-        .json({
-          code: 404
-        });
+		responseError(res, {
+			code: 404
+		})	
 	});
 }
 
@@ -257,17 +261,15 @@ function getEvent(req, res, next) {
 
   	db.one(q.join(' '))		
     .then( data => {
-      res.status(200)
-        .json({
-			code: 200,
-			data: data
-        });
+      	responseSuccess(res, {
+          code: 200,
+          data: data
+        })
     })
     .catch( err => {
-      	res.status(404)
-        .json({
+      	responseError(res, {
 			code: 404
-        });
+		})
     });
 }
 
@@ -279,10 +281,9 @@ function getDaysEvents(req, res, next) {
 	let categoryId = ~~req.query.category
 
 	if (!placeId && !categoryId) {
-		res.status(404)
-        .json({
+		responseError(res, {
 			code: 404
-        });
+		})
         return;
 	}
 
@@ -328,17 +329,13 @@ function getDaysEvents(req, res, next) {
     		delete dates[i].d;
     	}
 
-      	res.status(200)
-        .json({
-			code: 200,
-			data: dates
-        });
+      	responseSuccess(res, {
+          code: 200,
+          data: dates
+        })
     })
     .catch( err => {
-      	res.status(404)
-        .json({
-			code: 404
-        });
+      	responseError(res, { code:404 })
     });
 }
 
@@ -364,12 +361,12 @@ function getCountEvents(req, res, next) {
 
 	switch (type) {
 		case 'bycategories':
-			columns.push('c.id category_id', 'c.title', 'c.order_priority', 'count(e2c.event_id) events_count');
+			columns.push('c.id', 'c.title', 'c.order_priority', 'count(e2c.event_id) events_count');
 			from.push('categories c LEFT JOIN event2cats e2c ON e2c.category_id = c.id');
 			groupby.push('c.id');
 			break;
 		case 'byplaces':
-			columns.push('p.id place_id', 'p.title', 'p.order_priority', 'count(e.id) events_count');
+			columns.push('p.id', 'p.title', 'p.order_priority', 'count(e.id) events_count');
 			from.push('places p LEFT JOIN events e ON e.place_id = p.id');
 			//where.push('e.place_id = p.id');
 			groupby.push('p.id');
@@ -390,21 +387,27 @@ function getCountEvents(req, res, next) {
 
 	db.any(q.join(' '))
     .then( data => {
-      	res.status(200)
-        .json({
-			code: 200,
-			data: data
-        });
+      	responseSuccess(res, {
+          code: 200,
+          data: data
+        })
     })
     .catch( err => {
-      	res.status(404)
-        .json({
-			code: 404
-        });
+      	responseError(res, { code:404 })
     });
 }
 
 
+
+function responseSuccess(res, response) {
+	res.status(200).setHeader('Content-Type', 'application/json');
+	res.json(response);
+}
+
+function responseError(res, response) {
+	res.status(404).setHeader('Content-Type', 'application/json');
+	res.json(response);
+}
 
 
 function __install(req, res, next) {

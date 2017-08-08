@@ -2,14 +2,25 @@
 var express = require('express');
 var logger = require('morgan');
 var si = require('sql-injection');
-// routes
-var index = require('./routes/api');
 
 var app = express();
+
+const PORT = '5000';
+const HOST = 'http://localhost:'+PORT;
 
 // Uses
 app.use(si); 
 app.use(logger('dev'));
+
+
+app.all('/*', function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With");
+  next();
+});
+
+// routes
+var index = require('./routes/api');
 app.use(index);
 
 // Catch 404 and forward to error handler
@@ -29,5 +40,10 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+
+app.listen(PORT, ()=>{
+	console.log('server started at '+PORT);
+})
 
 module.exports = app;
