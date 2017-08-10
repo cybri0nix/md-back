@@ -1,12 +1,8 @@
 var promise = require('bluebird');
 
 
-// host:port/user@password
-// host:port/user (if no password)
-const DB_QUERY_STRING = 'postgres://localhost:5432/a1';
-
-
-// @todo: tests
+// host:port/db
+const DB_QUERY_STRING = 'postgres://localhost:5432/user';
 
 var options = {
   // Initialization Options
