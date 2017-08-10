@@ -6,7 +6,7 @@ var promise = require('bluebird');
 const DB_QUERY_STRING = 'postgres://localhost:5432/a1';
 
 
-
+// @todo: tests
 
 var options = {
   // Initialization Options
@@ -44,8 +44,6 @@ const EVENTS_LIST_COLUMNS = [
 	'e.photo',				// character varaying
 	'p.title place_title', 	// character varaying
 	'p.id place_id'		// int
-	//'c.id category_id',		// int
-    //'c.title category_title'// character varaying 
 ]
 
 const EVENT_COLUMNS = EVENTS_LIST_COLUMNS;
@@ -137,26 +135,17 @@ function getEvents(req, res, next) {
 
 	if (q['date']) {
 		let today = new Date(q['date']);
+		let todayFormatted = [
+														today.getUTCFullYear(), 
+														("0" + (today.getUTCMonth()+1)).slice(-2), 
+														("0" + today.getUTCDate()).slice(-2)
+													].join('-')
 
-		q['where'].push( 
-				[
-					'e.begin_time',
-					'>=', 
-					'\''+[today.getUTCFullYear(), today.getUTCMonth()+1, today.getUTCDate()].join('-')+' '+'00:00\'',
-				].join(' ')
-			);
-
-		q['where'].push( 
-				[
-					'e.begin_time',
-					'<=', 
-					'\''+[today.getUTCFullYear(), today.getUTCMonth()+1, today.getUTCDate()].join('-')+' '+'23:59\'',
-				].join(' ')
-			);
-		//console.log('where: ', q['where']);
+		q['where'].push(`e.begin_time >='${todayFormatted} 00:00'`);
+		q['where'].push(`e.begin_time <='${todayFormatted} 23:59'`);
 	}
 
-	// Constructing query
+	// Constructing query string
 	let qs = [
 			'SELECT', q['columns'].join(', '),
 			'FROM', q['from'].join(', '),
