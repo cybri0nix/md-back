@@ -2,7 +2,7 @@ var promise = require('bluebird');
 
 
 // host:port/db
-const DB_QUERY_STRING = 'postgres://localhost:5432/user';
+const DB_QUERY_STRING = 'postgres://localhost:5432/a1';
 
 var options = {
   // Initialization Options
@@ -184,7 +184,7 @@ function getEvents(req, res, next) {
 							].join(' AND ')
 					];
 
-					//console.log('qCats: ', qCats.join(' '));
+					// console.log('qCats: ', qCats.join(' '));
 
 		db.any(qCats.join(' '))
 			.then(cats => {
@@ -216,13 +216,15 @@ function getEvents(req, res, next) {
 			.catch(err => {
 				//console.log('error selecting cats');
 				responseError(res, {
-					code: 404
+					code: 404,
+					err: err
 				})
 			})
 	})
 	.catch(err => {
 		responseError(res, {
-			code: 404
+			code: 404,
+			err: err
 		})	
 	});
 }
@@ -253,8 +255,9 @@ function getEvent(req, res, next) {
     })
     .catch( err => {
       	responseError(res, {
-			code: 404
-		})
+					code: 404,
+					err: err
+				})
     });
 }
 
@@ -320,7 +323,10 @@ function getDaysEvents(req, res, next) {
         })
     })
     .catch( err => {
-      	responseError(res, { code:404 })
+      	responseError(res, { 
+					code:404,
+					err: err 
+				})
     });
 }
 
@@ -335,7 +341,7 @@ function getCountEvents(req, res, next) {
 	if (!type || -1 === ['byplaces', 'bycategories'].indexOf(type)) {
 		res.status(404)
         .json({
-			code: 404
+					code: 404
         });
         return;
 	}
@@ -378,7 +384,10 @@ function getCountEvents(req, res, next) {
         })
     })
     .catch( err => {
-      	responseError(res, { code:404 })
+      	responseError(res, { 
+					code:404,
+					err: err 
+				})
     });
 }
 
