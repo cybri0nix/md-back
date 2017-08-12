@@ -11,7 +11,6 @@ const HOST = 'http://localhost:'+PORT;
 global.consts = {
   // @example: postgres://[username]:[password]@[host]:[port]/[database]
   // @example: postgres://username:password@host:port/database
-  // @prod: 'postgres://mduser:moscowday2017-09-02@127.0.0.1:5432/md';
   PRODUCTION: false,
   DB_CONNECTION_STRING: 'postgres://localhost:5432/a1'
 }
