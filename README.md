@@ -6,8 +6,10 @@ npm install
 npm start
 
 
-В файле queries.js указать базу данных
-DB_QUERY_STRING
+В файле app.js указать базу данных
+DB_CONNECTION_STRING
+
+Формат: postgres://[username]:[password]@[host]:[port]/[database]
 
 ```
 
@@ -21,6 +23,23 @@ DB_QUERY_STRING
 
 ## SQL
 ```sql
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = public, pg_catalog;
+
+CREATE SEQUENCE categories_id_seq;
+CREATE SEQUENCE event2cats_id_seq;
+CREATE SEQUENCE events_id_seq;
+CREATE SEQUENCE places_id_seq;
+CREATE SEQUENCE stat_id_seq;
+
 CREATE TABLE public.categories
 (
     id bigint NOT NULL DEFAULT nextval('categories_id_seq'::regclass),
