@@ -128,6 +128,11 @@ TABLESPACE pg_default;
 {
 	"id": "5",
 	"begin_time": "2017-07-08T10:00:00.000Z", // Время и дата начала
+	"dateFormatted": {
+		"day": 12,
+		"month": "августа",
+		"time": "13:00"
+	},
 	"title": "Event 2",
 	"location_title": "Парк Горького", // Адрес проведения события
 	"description": "event 2 description", // Описание
