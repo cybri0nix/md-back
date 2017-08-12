@@ -2,7 +2,8 @@ var promise = require('bluebird');
 
 /**
  * 	@TODO
- * 	- Оптимизировать код
+ * 	- Вынести moment в global
+ *  - Оптимизировать код
  *  - Написать по-человечески
  *  - Разбить на модули
  *  - Сделать более продвинутую обработку ошибок
@@ -23,6 +24,10 @@ module.exports = {
 	getCountEvents: getCountEvents,
 	__install: __install
 }
+
+var Months = [
+	'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+]
 
 
 const DEFAULT_ITEMS_PER_PAGE = 10;
@@ -83,8 +88,7 @@ function getEvents(req, res, next) {
 	let placeId = ~~req.query.place
 
 	// Filter date
-	if (date)
-	{
+	if (date) {
 		let dateChunks = date.split('-')
 		dateChunks.forEach((chunk, i) => {
 			dateChunks[i] = i > 0 ? "0".concat(~~chunk).slice(-2) : ~~chunk
@@ -173,11 +177,25 @@ function getEvents(req, res, next) {
 
 			let eventsIDs = []
 			let eventId2IndexMap = {}
+			let time
+			let dt
 
-			// Setting up events IDs map
+			// Setting up events IDs map and formatting date
 			for (let i in eventsList) {
 				eventsIDs.push(eventsList[i].id); // for getting cats query
 				eventId2IndexMap[eventsList[i].id] = i; // for saving order
+
+				dt = new Date(eventsList[i].begin_time)
+				time = [
+					'0'.concat(dt.getHours()).slice(-2),
+					'0'.concat(dt.getMinutes()).slice(-2)
+				].join(':')
+				
+				eventsList[i].dateFormatted = {
+					day: dt.getDate(),
+					month: Months[dt.getMonth()],
+					time: time,
+				}
 			}
 
 			let qCats = [
@@ -264,12 +282,38 @@ function getEvent(req, res, next) {
 
 	db.one(q.join(' '))
 		.then(data => {
+			if (data.begin_time !== undefined) {
+				const dt = new Date(data.begin_time)
+				const time = [
+					'0'.concat(dt.getHours()).slice(-2),
+					'0'.concat(dt.getMinutes()).slice(-2)
+				].join(':')
+
+				data.dateFormatted = {
+					day: dt.getDate(),
+					month: Months[dt.getMonth()],
+					time: time,
+				}
+			}
+
 			responseSuccess(res, {
 				code: 200,
 				data: data
 			})
 		})
 		.catch(err => {
+
+			if (err.name === 'QueryResultError'
+				&& err.result.rowCount === 0) {
+				responseError(res, {
+					code: 404,
+					err: {
+						"code": -1000,
+						"message": "event not found"
+					}
+				})
+				return
+			}
 			responseError(res, {
 				code: 404,
 				err: err
