@@ -1,19 +1,20 @@
 var promise = require('bluebird');
 
+/**
+ * 	@TODO
+ * 	- Оптимизировать код
+ *  - Написать по-человечески
+ *  - Разбить на модули
+ *  - Сделать более продвинутую обработку ошибок
+ *  - Возможно, использовать ORM (если будет время сделать реинжиниринг)
+ *  - Сделать нормальную подготовку среды dev/prod
+ */
 
-// host:port/db
-const DB_QUERY_STRING = 'postgres://localhost:5432/a1';
-
-var options = {
-  // Initialization Options
-  promiseLib: promise
-};
-
-var pgp = require('pg-promise')(options);
-var connectionString = DB_QUERY_STRING;
-var db = pgp(connectionString);
-
-// add query functions
+var pgp = require('pg-promise')({
+	promiseLib: promise
+})
+var connectionString = global.consts.DB_CONNECTION_STRING
+var db = pgp(connectionString)
 
 module.exports = {
 	getEvents: getEvents,
@@ -21,10 +22,10 @@ module.exports = {
 	getDaysEvents: getDaysEvents,
 	getCountEvents: getCountEvents,
 	__install: __install
-};
+}
 
 
-const ITEMS_PER_PAGE = 10;
+const DEFAULT_ITEMS_PER_PAGE = 10;
 
 const EVENTS_LIST_COLUMNS = [
 	'e.id', 		// int
@@ -50,25 +51,23 @@ function getEvents(req, res, next) {
 
 	let params = []
 	let q = {
-			'columns': EVENTS_LIST_COLUMNS,
-			'from':[
-				'events e', 
-				'places p'
-			],
-			'where': [
-				'e.place_id = p.id'
-				//'e.id = e2c.event_id', 
-				//'c.id = e2c.category_id'
-			],
-			'orderby': [
-				'e.begin_time ASC'
-			],
-			'limit': -1,
-			'offset': -1
-		};
+		'columns': EVENTS_LIST_COLUMNS,
+		'from': [
+			'events e',
+			'places p'
+		],
+		'where': [
+			'e.place_id = p.id'
+		],
+		'orderby': [
+			'e.begin_time ASC'
+		],
+		'limit': -1,
+		'offset': -1
+	};
 
 	let pageNum = ~~req.query.page
-	let itemsPerPage = ~~req.query.items_per_page || ITEMS_PER_PAGE
+	let itemsPerPage = ~~req.query.items_per_page || DEFAULT_ITEMS_PER_PAGE
 	let orderByCol = req.query.orderby_col
 	let orderByMode = req.query.orderby_mode
 
@@ -83,9 +82,19 @@ function getEvents(req, res, next) {
 
 	let placeId = ~~req.query.place
 
-	// govnocode/kostyl/vasya
+	// Filter date
+	if (date)
+	{
+		let dateChunks = date.split('-')
+		dateChunks.forEach((chunk, i) => {
+			dateChunks[i] = i > 0 ? "0".concat(~~chunk).slice(-2) : ~~chunk
+		})
+		date = dateChunks.join('-')
+	}
+
+	// @todo: improve
 	if (q['columns'].indexOf('e2c.category_id') !== -1) {
-		a['columns'] = a['columns'].filter(function(item) { 
+		a['columns'] = a['columns'].filter(function (item) {
 			return item !== 'e2c.category_id'
 		})
 	}
@@ -100,19 +109,11 @@ function getEvents(req, res, next) {
 		q['where'].push(['e.place_id', placeId].join('='));
 	}
 
-	// Setting 'where' conditions
-	/*for (let p in params) {
-		if (params[p]) {
-			q['where'].push([p, params[p]].join('='));
-		}
-	}*/
-
-	if (undefined !== isMain) {
-		q['where'].push(['e.is_main', isMain].join('=')) 
+	if (isMain) {
+		q['where'].push(['e.is_main', isMain].join('='))
 	}
 
 	if (date) {
-		// @TODO: format validate yyyy-mm-dd
 		q['date'] = date;
 	}
 
@@ -121,21 +122,16 @@ function getEvents(req, res, next) {
 		q['limit'] = itemsPerPage
 	}
 	if (pageNum) {
-		q['offset'] = (pageNum-1) * itemsPerPage
-	}
-
-	// Setting order options
-	if (orderByCol) {
-		q['order by'] = [orderByCol, orderByMode].join(' ');
+		q['offset'] = (pageNum - 1) * itemsPerPage
 	}
 
 	if (q['date']) {
 		let today = new Date(q['date']);
 		let todayFormatted = [
-														today.getUTCFullYear(), 
-														("0" + (today.getUTCMonth()+1)).slice(-2), 
-														("0" + today.getUTCDate()).slice(-2)
-													].join('-')
+			today.getUTCFullYear(),
+			"0".concat(today.getUTCMonth() + 1).slice(-2),
+			"0".concat(today.getUTCDate()).slice(-2)
+		].join('-')
 
 		q['where'].push(`e.begin_time >='${todayFormatted} 00:00'`);
 		q['where'].push(`e.begin_time <='${todayFormatted} 23:59'`);
@@ -143,90 +139,107 @@ function getEvents(req, res, next) {
 
 	// Constructing query string
 	let qs = [
-			'SELECT', q['columns'].join(', '),
-			'FROM', q['from'].join(', '),
-			'WHERE', q['where'].join(' AND ')
-		];
+		'SELECT', q['columns'].join(', '),
+		'FROM', q['from'].join(', '),
+		'WHERE', q['where'].join(' AND ')
+	];
 
 	qs['ORDER BY'] = q['orderby'];
-	
-	if (q['limit']>0) {
-		qs.push( ['LIMIT', q['limit']].join(' ') ); 
-	}
-	
-	if (q['offset']>0) {
-		qs.push( ['OFFSET', q['offset'] ].join(' ') );
+
+	if (q['limit'] > 0) {
+		qs.push(['LIMIT', q['limit']].join(' '));
 	}
 
-	console.log('q: ', q);
-	console.log('QUERY: ', qs.join(' '));
+	if (q['offset'] > 0) {
+		qs.push(['OFFSET', q['offset']].join(' '));
+	}
 
-
+	if (!global.consts.PRODUCTION) {
+		console.log('\n_______________________________________________\n')
+		console.log('METHOD:\n getEvents')
+		console.log('QUERY:\n selecting events:\n', qs.join(' '))
+	}
 
 	db.any(qs.join(' '))
-	.then(eventsList => {
+		.then(eventsList => {
 
-		let eventsIDs = []
-		let eventId2IndexMap = {}
+			if (eventsList.length === 0) {
+				responseSuccess(res, {
+					code: 200,
+					data: []
+				})
+				return
+			}
 
-		for (let i in eventsList) {
-			eventsIDs.push( eventsList[i].id );
-			eventId2IndexMap[ eventsList[i].id ] = i;
-		}
+			let eventsIDs = []
+			let eventId2IndexMap = {}
 
-		let qCats = [
-						'SELECT e2c.event_id, c.id cat_id, c.title cat_title',
-						'FROM categories c, event2cats e2c',
-						'WHERE',
-							[
-								'e2c.category_id = c.id',
-								'e2c.event_id IN ('+eventsIDs.join(',')+')'
-							].join(' AND ')
-					];
+			// Setting up events IDs map
+			for (let i in eventsList) {
+				eventsIDs.push(eventsList[i].id); // for getting cats query
+				eventId2IndexMap[eventsList[i].id] = i; // for saving order
+			}
 
-					// console.log('qCats: ', qCats.join(' '));
+			let qCats = [
+				'SELECT e2c.event_id, c.id cat_id, c.title cat_title',
+				'FROM categories c, event2cats e2c',
+				'WHERE',
+				[
+					'e2c.category_id = c.id',
+					'e2c.event_id IN (' + eventsIDs.join(',') + ')'
+				].join(' AND ')
+			];
 
-		db.any(qCats.join(' '))
-			.then(cats => {
+			if (!global.consts.PRODUCTION) {
+				console.log('QUERY2:\n selecting categories by events IDs:\n', qCats.join(' '));
+			}
 
-				let eventIdx;
+			// Selecting cats by events IDs
+			db.any(qCats.join(' '))
+				.then(cats => {
 
-				for (let i in cats) {
-					
-					eventIdx = eventId2IndexMap[cats[i].event_id];
+					let eventIdx;
 
-					//console.log('cat_item: ', eventsList[ eventIdx ]);
+					// Injecting categorie data to events
+					for (let i in cats) {
 
-					if (undefined === eventsList[ eventIdx ]['categories']) {
-						eventsList[ eventIdx ]['categories'] = [];
+						eventIdx = eventId2IndexMap[cats[i].event_id];
+
+						if (undefined === eventsList[eventIdx]['categories']) {
+							eventsList[eventIdx]['categories'] = [];
+						}
+
+						eventsList[eventIdx]['categories'].push({
+							'id': cats[i].cat_id,
+							'title': cats[i].cat_title
+						});
 					}
 
-					eventsList[ eventIdx ]['categories'].push({
-						'id': cats[i].cat_id,
-						'title': cats[i].cat_title
-					});
-				}
+					if (!global.consts.PRODUCTION) {
+						console.log('events returned:\n', eventsList)
+						console.log('\n_______________________________________________\n')
+					}
 
-				responseSuccess(res, {
-		          code: 200,
-		          data: eventsList
-		        })
+					responseSuccess(res, {
+						code: 200,
+						data: eventsList
+					})
 
-			})
-			.catch(err => {
-				//console.log('error selecting cats');
-				responseError(res, {
-					code: 404,
-					err: err
 				})
+				.catch(err => {
+					//console.log('error selecting cats');
+					responseError(res, {
+						code: 404,
+						err: err
+					})
+				})
+		})
+		.catch(err => {
+			responseError(res, {
+				code: 404,
+				err: err
 			})
-	})
-	.catch(err => {
-		responseError(res, {
-			code: 404,
-			err: err
-		})	
-	});
+		});
 }
 
 
@@ -235,30 +248,33 @@ function getEvent(req, res, next) {
 	let id = parseInt(req.params.id);
 
 	let q = [
-				'SELECT', EVENT_COLUMNS.join(), 
-				'FROM', 'events e, places p', 
-				'WHERE', 
-					[
-						'e.id = ' + id,
-						'p.id = e.place_id'
-					].join(' AND ')
-			]
+		'SELECT', EVENT_COLUMNS.join(),
+		'FROM', 'events e, places p',
+		'WHERE',
+		[
+			'e.id = ' + id,
+			'p.id = e.place_id'
+		].join(' AND ')
+	]
 
-			console.log(q.join(' '));
+	console.log('_______________________________________________')
+	console.log('METHOD: getEvent')
+	console.log('QUERY: ', q.join(' '))
+	console.log('_______________________________________________')
 
-  	db.one(q.join(' '))		
-    .then( data => {
-      	responseSuccess(res, {
-          code: 200,
-          data: data
-        })
-    })
-    .catch( err => {
-      	responseError(res, {
-					code: 404,
-					err: err
-				})
-    });
+	db.one(q.join(' '))
+		.then(data => {
+			responseSuccess(res, {
+				code: 200,
+				data: data
+			})
+		})
+		.catch(err => {
+			responseError(res, {
+				code: 404,
+				err: err
+			})
+		});
 }
 
 
@@ -268,11 +284,12 @@ function getDaysEvents(req, res, next) {
 	let placeId = ~~req.query.place
 	let categoryId = ~~req.query.category
 
+
 	if (!placeId && !categoryId) {
 		responseError(res, {
 			code: 404
 		})
-        return;
+		return
 	}
 
 	let from = ['events e']
@@ -281,53 +298,53 @@ function getDaysEvents(req, res, next) {
 	if (categoryId) {
 		from.push('event2cats e2c');
 		where.push('e.id = e2c.event_id');
-		where.push('e2c.category_id='+categoryId);
+		where.push('e2c.category_id=' + categoryId);
 	} else {
-		where.push('e.place_id='+placeId);
+		where.push('e.place_id=' + placeId);
 	}
 
 	let q = [
-				'SELECT',
-					[
-						'EXTRACT(DAY FROM e.begin_time) d', 
-						'EXTRACT(YEAR FROM e.begin_time) y', 
-						'EXTRACT(MONTH FROM e.begin_time) m', 
-						'count(*) count'
-					].join(', '),
-				'FROM', from.join(', '),
-				'WHERE', where.join(' AND '),
-				'GROUP BY y,m,d'
-			];
+		'SELECT',
+		[
+			'EXTRACT(DAY FROM e.begin_time) d',
+			'EXTRACT(YEAR FROM e.begin_time) y',
+			'EXTRACT(MONTH FROM e.begin_time) m',
+			'count(*) count'
+		].join(', '),
+		'FROM', from.join(', '),
+		'WHERE', where.join(' AND '),
+		'GROUP BY y,m,d'
+	];
 
-	console.log('q: ', q.join(' '));
+	console.log('getDaysEvents: ', q.join(' '));
 
 	db.any(q.join(' '))
-    .then( dates => {
+		.then(dates => {
 
-    	// Concat date from [y], [m], [d] => [y-m-d]
-    	for (let i in dates) {
-    		dates[i].dt = [
-		    			dates[i].y, 
-		    			("0"+dates[i].m).slice(-2), 
-		    			("0"+dates[i].d).slice(-2) 
-		    		].join('-');
+			// Concat date from [y], [m], [d] => [y-m-d]
+			for (let i in dates) {
+				dates[i].dt = [
+					dates[i].y,
+					"0".concat(dates[i].m).slice(-2),
+					"0".concat(dates[i].d).slice(-2)
+				].join('-');
 
-    		delete dates[i].y;
-    		delete dates[i].m;
-    		delete dates[i].d;
-    	}
+				delete dates[i].y;
+				delete dates[i].m;
+				delete dates[i].d;
+			}
 
-      	responseSuccess(res, {
-          code: 200,
-          data: dates
-        })
-    })
-    .catch( err => {
-      	responseError(res, { 
-					code:404,
-					err: err 
-				})
-    });
+			responseSuccess(res, {
+				code: 200,
+				data: dates
+			})
+		})
+		.catch(err => {
+			responseError(res, {
+				code: 404,
+				err: err
+			})
+		});
 }
 
 
@@ -340,10 +357,10 @@ function getCountEvents(req, res, next) {
 
 	if (!type || -1 === ['byplaces', 'bycategories'].indexOf(type)) {
 		res.status(404)
-        .json({
-					code: 404
-        });
-        return;
+			.json({
+				code: 404
+			});
+		return;
 	}
 	let columns = []
 	let from = []
@@ -366,29 +383,29 @@ function getCountEvents(req, res, next) {
 
 
 	let q = [
-				'SELECT', columns.join(', '),
-				'FROM', from.join(', '),
-				( where.length ? 'WHERE ' + where.join(' AND ') : '' ),
-				'GROUP BY', groupby.join(', '),
-				'ORDER BY order_priority DESC'
-			];
+		'SELECT', columns.join(', '),
+		'FROM', from.join(', '),
+		(where.length ? 'WHERE ' + where.join(' AND ') : ''),
+		'GROUP BY', groupby.join(', '),
+		'ORDER BY order_priority DESC'
+	];
 
 
 	console.log('q: ', q.join(' '));
 
 	db.any(q.join(' '))
-    .then( data => {
-      	responseSuccess(res, {
-          code: 200,
-          data: data
-        })
-    })
-    .catch( err => {
-      	responseError(res, { 
-					code:404,
-					err: err 
-				})
-    });
+		.then(data => {
+			responseSuccess(res, {
+				code: 200,
+				data: data
+			})
+		})
+		.catch(err => {
+			responseError(res, {
+				code: 404,
+				err: err
+			})
+		});
 }
 
 
@@ -405,7 +422,7 @@ function responseError(res, response) {
 
 
 function __install(req, res, next) {
-  	
+
 }
 
 

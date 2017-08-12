@@ -8,10 +8,17 @@ var app = express();
 const PORT = '5000';
 const HOST = 'http://localhost:'+PORT;
 
+global.consts = {
+  // @example: postgres://[username]:[password]@[host]:[port]/[database]
+  // @example: postgres://username:password@host:port/database
+  // @prod: 'postgres://mduser:moscowday2017-09-02@127.0.0.1:5432/md';
+  PRODUCTION: false,
+  DB_CONNECTION_STRING: 'postgres://localhost:5432/a1'
+}
+
 // Uses
 app.use(si); 
 app.use(logger('dev'));
-
 
 app.all('/*', function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
