@@ -16,7 +16,7 @@ global.consts = {
 }
 
 // Uses
-app.use(si); 
+app.use(si);
 app.use(logger('dev'));
 
 app.all('/*', function(req, res, next) {
@@ -24,6 +24,8 @@ app.all('/*', function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "X-Requested-With");
   next();
 });
+
+app.use(express.static(__dirname + '/i'));
 
 // routes
 var index = require('./routes/api');
