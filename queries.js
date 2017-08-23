@@ -1,14 +1,17 @@
-var promise = require('bluebird');
+var promise = require('bluebird')
 
 /**
  * 	@TODO
- * 	- Вынести moment в global
- *  - Оптимизировать код
- *  - Написать по-человечески
- *  - Разбить на модули
- *  - Сделать более продвинутую обработку ошибок
- *  - Возможно, использовать ORM (если будет время сделать реинжиниринг)
- *  - Сделать нормальную подготовку среды dev/prod
+ * 	- moment to global
+ *  - Code optimizations
+ *  - Modulization
+ *  - Improove errors handling
+ *  - ORM + parametrize queries (if time will enough)
+ *  - Infrastructure for dev/prod
+ *  - Styleguides
+ *  - Explain queries + indexes + fk constraints
+ *  - Caching results in memory or SSD
+ *  - Logs
  */
 
 var pgp = require('pg-promise')({
@@ -30,7 +33,7 @@ var Months = [
 ]
 
 
-const DEFAULT_ITEMS_PER_PAGE = 10;
+const DEFAULT_ITEMS_PER_PAGE = 10
 
 const EVENTS_LIST_COLUMNS = [
 	'e.id', 		// int
@@ -43,19 +46,22 @@ const EVENTS_LIST_COLUMNS = [
 	'e.favs_count', 		// int
 	'e.is_main', 			// bool
 	'e.is_bold', 			// bool
-	'e.photo',				// character varaying
+	'e.is_free',
+	'e.address',
+	'e.end_time',
+	'e.restriction',
 	'p.title place_title', 	// character varaying
 	'p.id place_id'		// int
 ]
 
-const EVENT_COLUMNS = EVENTS_LIST_COLUMNS;
+const EVENT_COLUMNS = EVENTS_LIST_COLUMNS
 
 
 
 function getEvents(req, res, next) {
 
-	let params = []
-	let q = {
+	var params = []
+	var q = {
 		'columns': EVENTS_LIST_COLUMNS,
 		'from': [
 			'events e',
@@ -69,27 +75,27 @@ function getEvents(req, res, next) {
 		],
 		'limit': -1,
 		'offset': -1
-	};
+	}
 
-	let pageNum = ~~req.query.page
-	let itemsPerPage = ~~req.query.items_per_page || DEFAULT_ITEMS_PER_PAGE
-	let orderByCol = req.query.orderby_col
-	let orderByMode = req.query.orderby_mode
+	var pageNum = ~~req.query.page
+	var itemsPerPage = ~~req.query.items_per_page || DEFAULT_ITEMS_PER_PAGE
+	var orderByCol = req.query.orderby_col
+	var orderByMode = req.query.orderby_mode
 
-	let categoryId = ~~req.query.category
+	var categoryId = ~~req.query.category
 
-	let appId = req.query.app_id;
-	let appData = req.query.app_data;
-	let appDataFixDate
+	var appId = req.query.app_id
+	var appData = req.query.app_data
+	var appDataFixDate
 
-	let date = req.query.date
-	let isMain = req.query.is_main
+	var date = req.query.date
+	var isMain = req.query.is_main
 
-	let placeId = ~~req.query.place
+	var placeId = ~~req.query.place
 
 	// Filter date
 	if (date) {
-		let dateChunks = date.split('-')
+		var dateChunks = date.split('-')
 		dateChunks.forEach((chunk, i) => {
 			dateChunks[i] = i > 0 ? "0".concat(~~chunk).slice(-2) : ~~chunk
 		})
@@ -104,13 +110,13 @@ function getEvents(req, res, next) {
 	}
 
 	if (categoryId) {
-		q['from'].push('event2cats e2c');
-		q['where'].push('e.id = e2c.event_id');
-		q['where'].push(['e2c.category_id', categoryId].join('='));
+		q['from'].push('event_to_cats e2c')
+		q['where'].push('e.id = e2c.event_id')
+		q['where'].push(['e2c.category_id', categoryId].join('='))
 	}
 
 	if (placeId) {
-		q['where'].push(['e.place_id', placeId].join('='));
+		q['where'].push(['e.place_id', placeId].join('='))
 	}
 
 	if (isMain) {
@@ -118,7 +124,7 @@ function getEvents(req, res, next) {
 	}
 
 	if (date) {
-		q['date'] = date;
+		q['date'] = date
 	}
 
 	// Setting pagination
@@ -130,32 +136,42 @@ function getEvents(req, res, next) {
 	}
 
 	if (q['date']) {
-		let today = new Date(q['date']);
-		let todayFormatted = [
-			today.getUTCFullYear(),
-			"0".concat(today.getUTCMonth() + 1).slice(-2),
-			"0".concat(today.getUTCDate()).slice(-2)
+		var date = new Date(q['date'])
+		var filterByDate = [
+			date.getUTCFullYear(),
+			"0".concat(date.getUTCMonth() + 1).slice(-2),
+			"0".concat(date.getUTCDate()).slice(-2)
 		].join('-')
 
-		q['where'].push(`e.begin_time >='${todayFormatted} 00:00'`);
-		q['where'].push(`e.begin_time <='${todayFormatted} 23:59'`);
+		// @TODO: refactoring required for selecting between begin_time and end_time
+		// q['where'].push(`e.begin_time >='${filterByDate} 00:00'`)
+		// q['where'].push(`e.begin_time <='${filterByDate} 23:59'`)
+
+		// After first refactoring:
+		// it is not enough 
+		// q['where'].push(`'${filterByDate}' BETWEEN e.begin_time AND e.end_time`)	
+
+		// After second refactoring:
+		q['where'].push(`('${filterByDate}'
+			BETWEEN 
+						concat(to_char(e.begin_time, 'YYYY-MM-DD'), ' 00:00')::date AND concat(to_char(e.end_time, 'YYYY-MM-DD'), ' 23:59')::date
+				)`)
 	}
 
 	// Constructing query string
-	let qs = [
-		'SELECT', q['columns'].join(', '),
+	var qs = [
+		'SELECT', 'DISTINCT ' + q['columns'].join(', '),
 		'FROM', q['from'].join(', '),
-		'WHERE', q['where'].join(' AND ')
-	];
-
-	qs['ORDER BY'] = q['orderby'];
+		'WHERE', q['where'].join(' AND '),
+		'ORDER BY e.begin_time ASC'
+	]
 
 	if (q['limit'] > 0) {
-		qs.push(['LIMIT', q['limit']].join(' '));
+		qs.push(['LIMIT', q['limit']].join(' '))
 	}
 
 	if (q['offset'] > 0) {
-		qs.push(['OFFSET', q['offset']].join(' '));
+		qs.push(['OFFSET', q['offset']].join(' '))
 	}
 
 	if (!global.consts.PRODUCTION) {
@@ -175,22 +191,23 @@ function getEvents(req, res, next) {
 				return
 			}
 
-			let eventsIDs = []
-			let eventId2IndexMap = {}
-			let time
-			let dt
+			var eventsIDs = []
+			var eventId2IndexMap = {}
+			var time
+			var dt
 
 			// Setting up events IDs map and formatting date
-			for (let i in eventsList) {
-				eventsIDs.push(eventsList[i].id); // for getting cats query
-				eventId2IndexMap[eventsList[i].id] = i; // for saving order
+			var i
+			for (i in eventsList) {
+				eventsIDs.push(eventsList[i].id) // for getting cats query
+				eventId2IndexMap[eventsList[i].id] = i // for saving order
 
 				dt = new Date(eventsList[i].begin_time)
 				time = [
 					'0'.concat(dt.getHours()).slice(-2),
 					'0'.concat(dt.getMinutes()).slice(-2)
 				].join(':')
-				
+
 				eventsList[i].dateFormatted = {
 					day: dt.getDate(),
 					month: Months[dt.getMonth()],
@@ -198,39 +215,40 @@ function getEvents(req, res, next) {
 				}
 			}
 
-			let qCats = [
-				'SELECT e2c.event_id, c.id cat_id, c.title cat_title',
-				'FROM categories c, event2cats e2c',
+			var qCats = [
+				'SELECT e2c.event_id, c.id cat_id, c.icon_name icon_name, c.title cat_title',
+				'FROM categories c, event_to_cats e2c',
 				'WHERE',
 				[
 					'e2c.category_id = c.id',
 					'e2c.event_id IN (' + eventsIDs.join(',') + ')'
 				].join(' AND ')
-			];
+			]
 
 			if (!global.consts.PRODUCTION) {
-				console.log('QUERY2:\n selecting categories by events IDs:\n', qCats.join(' '));
+				console.log('QUERY2:\n selecting categories by events IDs:\n', qCats.join(' '))
 			}
 
 			// Selecting cats by events IDs
 			db.any(qCats.join(' '))
 				.then(cats => {
 
-					let eventIdx;
+					var eventIdx
 
 					// Injecting categorie data to events
-					for (let i in cats) {
+					for (var i in cats) {
 
-						eventIdx = eventId2IndexMap[cats[i].event_id];
+						eventIdx = eventId2IndexMap[cats[i].event_id]
 
 						if (undefined === eventsList[eventIdx]['categories']) {
-							eventsList[eventIdx]['categories'] = [];
+							eventsList[eventIdx]['categories'] = []
 						}
 
 						eventsList[eventIdx]['categories'].push({
 							'id': cats[i].cat_id,
-							'title': cats[i].cat_title
-						});
+							'title': cats[i].cat_title,
+							'icon_name': cats[i].icon_name
+						})
 					}
 
 					if (!global.consts.PRODUCTION) {
@@ -245,7 +263,6 @@ function getEvents(req, res, next) {
 
 				})
 				.catch(err => {
-					//console.log('error selecting cats');
 					responseError(res, {
 						code: 404,
 						err: err
@@ -257,15 +274,15 @@ function getEvents(req, res, next) {
 				code: 404,
 				err: err
 			})
-		});
+		})
 }
 
 
 
 function getEvent(req, res, next) {
-	let id = parseInt(req.params.id);
+	var id = parseInt(req.params.id)
 
-	let q = [
+	var q = [
 		'SELECT', EVENT_COLUMNS.join(),
 		'FROM', 'events e, places p',
 		'WHERE',
@@ -318,8 +335,9 @@ function getEvent(req, res, next) {
 				code: 404,
 				err: err
 			})
-		});
+		})
 }
+
 
 
 
@@ -327,7 +345,6 @@ function getDaysEvents(req, res, next) {
 
 	let placeId = ~~req.query.place
 	let categoryId = ~~req.query.category
-
 
 	if (!placeId && !categoryId) {
 		responseError(res, {
@@ -339,15 +356,22 @@ function getDaysEvents(req, res, next) {
 	let from = ['events e']
 	let where = []
 
-	if (categoryId) {
-		from.push('event2cats e2c');
-		where.push('e.id = e2c.event_id');
-		where.push('e2c.category_id=' + categoryId);
-	} else {
-		where.push('e.place_id=' + placeId);
+	const today = new Date()
+	const filterByDate = {
+		'year': today.getFullYear(),
+		'month': "0".concat(today.getMonth() + 1).slice(-2),
+		'day': "0".concat(today.getDate()).slice(-2)
 	}
 
-	let q = [
+	if (categoryId) {
+		from.push('event_to_cats e2c')
+		where.push('e.id = e2c.event_id')
+		where.push('e2c.category_id=' + categoryId)
+	} else {
+		where.push('e.place_id=' + placeId)
+	}
+
+	const q = [
 		'SELECT',
 		[
 			'EXTRACT(DAY FROM e.begin_time) d',
@@ -357,30 +381,63 @@ function getDaysEvents(req, res, next) {
 		].join(', '),
 		'FROM', from.join(', '),
 		'WHERE', where.join(' AND '),
-		'GROUP BY y,m,d'
-	];
+		'GROUP BY y,m,d',
+		'ORDER BY m,d'
+	]
 
-	console.log('getDaysEvents: ', q.join(' '));
+	console.log('getDaysEvents: ', q.join(' '))
 
 	db.any(q.join(' '))
 		.then(dates => {
 
-			// Concat date from [y], [m], [d] => [y-m-d]
-			for (let i in dates) {
-				dates[i].dt = [
-					dates[i].y,
-					"0".concat(dates[i].m).slice(-2),
-					"0".concat(dates[i].d).slice(-2)
-				].join('-');
+			let dt
+			let time
+			const newDates = []
+			let buffDate
 
-				delete dates[i].y;
-				delete dates[i].m;
-				delete dates[i].d;
+			for (let i in dates) {
+
+				if (~~dates[i].m === ~~filterByDate.month) {
+					if (~~dates[i].d < ~~filterByDate.day) {
+						continue
+					}
+				}
+				else if (~~dates[i].m < ~~filterByDate.month || ~~dates[i].y < ~~filterByDate.year) {
+					continue
+				}
+
+				buffDate = dates[i]
+
+				// Concat date from [y], [m], [d] => [y-m-d]
+				buffDate.dt = [
+					dates[i].y,
+					"0".concat(buffDate.m).slice(-2),
+					"0".concat(buffDate.d).slice(-2)
+				].join('-')
+
+				delete buffDate.y
+				delete buffDate.m
+				delete buffDate.d
+
+				// Add formattedDate
+				dt = new Date(buffDate.dt)
+				time = [
+					'0'.concat(dt.getHours()).slice(-2),
+					'0'.concat(dt.getMinutes()).slice(-2)
+				].join(':')
+
+				buffDate.dateFormatted = {
+					day: dt.getDate(),
+					month: Months[dt.getMonth()],
+					time: time,
+				}
+
+				newDates.push(buffDate)
 			}
 
 			responseSuccess(res, {
 				code: 200,
-				data: dates
+				data: newDates
 			})
 		})
 		.catch(err => {
@@ -388,7 +445,7 @@ function getDaysEvents(req, res, next) {
 				code: 404,
 				err: err
 			})
-		});
+		})
 }
 
 
@@ -397,45 +454,69 @@ function getDaysEvents(req, res, next) {
 
 function getCountEvents(req, res, next) {
 
-	let type = req.query.type
+	var type = req.query.type
 
 	if (!type || -1 === ['byplaces', 'bycategories'].indexOf(type)) {
 		res.status(404)
 			.json({
 				code: 404
-			});
-		return;
+			})
+		return
 	}
-	let columns = []
-	let from = []
-	let where = []
-	let groupby = []
+
+	const columns = []
+	const from = []
+	const where = []
+	const groupby = []
+
+	const today = new Date()
+	const filterByDate = [
+		today.getFullYear(),
+		'0'.concat(today.getMonth() + 1).slice(-2),
+		'0'.concat(today.getDate()).slice(-2),
+	].join('-')
 
 	switch (type) {
+
 		case 'bycategories':
-			columns.push('c.id', 'c.title', 'c.order_priority', 'count(e2c.event_id) events_count');
-			from.push('categories c LEFT JOIN event2cats e2c ON e2c.category_id = c.id');
-			groupby.push('c.id');
-			break;
+
+			// SELECT c.id, c.title, c.order_priority, c.icon_name, count(distinct e.id) events_count 
+			// FROM event_to_cats e2c, categories c, events e
+			// WHERE
+			// e2c.category_id = c.id AND e2c.event_id = e.id
+			// AND ('2017-08-23' BETWEEN e.begin_time AND e.end_time OR e.begin_time >= '2017-08-23')
+
+			// GROUP BY c.id 
+			// ORDER BY order_priority DESC
+
+			columns.push('c.id', 'c.title', 'c.order_priority', 'c.icon_name', 'count(distinct e.id) events_count')
+			from.push('event_to_cats e2c, categories c, events e')
+			where.push('e2c.category_id = c.id')
+			where.push('e2c.event_id = e.id')
+			where.push(`('${filterByDate}' BETWEEN e.begin_time AND e.end_time OR e.begin_time >= '${filterByDate}')`)
+			groupby.push('c.id')
+			break
+
 		case 'byplaces':
-			columns.push('p.id', 'p.title', 'p.order_priority', 'count(e.id) events_count');
-			from.push('places p LEFT JOIN events e ON e.place_id = p.id');
-			//where.push('e.place_id = p.id');
-			groupby.push('p.id');
-			break;
+			// @TODO: refactor: add filtering by today, exclude left joins
+			columns.push('p.id', 'p.title', 'p.order_priority', 'count(e.id) events_count')
+			from.push('places p LEFT JOIN events e ON e.place_id = p.id')
+			//where.push('e.place_id = p.id')
+			groupby.push('p.id')
+			break
 	}
 
 
-	let q = [
+	var q = [
 		'SELECT', columns.join(', '),
 		'FROM', from.join(', '),
 		(where.length ? 'WHERE ' + where.join(' AND ') : ''),
 		'GROUP BY', groupby.join(', '),
 		'ORDER BY order_priority DESC'
-	];
+	]
 
 
-	console.log('q: ', q.join(' '));
+	console.log('q: ', q.join(' '))
 
 	db.any(q.join(' '))
 		.then(data => {
@@ -449,19 +530,19 @@ function getCountEvents(req, res, next) {
 				code: 404,
 				err: err
 			})
-		});
+		})
 }
 
 
 
 function responseSuccess(res, response) {
-	res.status(200).setHeader('Content-Type', 'application/json');
-	res.json(response);
+	res.status(200).setHeader('Content-Type', 'application/json')
+	res.json(response)
 }
 
 function responseError(res, response) {
-	res.status(404).setHeader('Content-Type', 'application/json');
-	res.json(response);
+	res.status(404).setHeader('Content-Type', 'application/json')
+	res.json(response)
 }
 
 
