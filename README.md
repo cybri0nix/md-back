@@ -1,5 +1,7 @@
 # MoscowDay - back-end NodeJS application
 
+## Осторожно, написано на коленке
+
 ## Installing
 ```
 npm install
